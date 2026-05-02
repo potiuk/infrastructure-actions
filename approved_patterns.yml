@@ -250,6 +250,7 @@
 - peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9
 - peter-evans/create-pull-request@*
 - phoenix-actions/test-reporting@f957cd93fc2d848d556fa0d03c57bc79127b6b5e
+- phoenix-actions/test-reporting@7317eea6e13c47348dd0bb318669485157c518d6
 - pnpm/action-setup@*
 - posit-dev/setup-air@63e80dedb6d275c94a3841e15e5ff8691e1ab237
 - posit-dev/setup-air@cf390573ff4fe0f198f35df3a642b1409328d859
