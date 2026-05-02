@@ -863,3 +863,55 @@ return lines[0]
 """
         assert _file_is_pure_data_fetch(split_fetch) is True
         assert _find_binary_downloads_js(split_fetch) == []
+
+    # The exact pattern that triggered the false positive on PR #789
+    # (rubygems/configure-rubygems-credentials, transitively pulled in by
+    # rubygems/release-gem): @actions/http-client postJson against an OIDC
+    # token-exchange endpoint. The response is a credential, not a binary.
+    RUBYGEMS_OIDC_EXCHANGE = """\
+import * as core from '@actions/core'
+import {HttpClient} from '@actions/http-client'
+import {IdToken, IdTokenSchema} from './responses'
+
+export async function exchangeToken(audience, server) {
+  const webIdentityToken = await core.getIDToken(audience)
+  const http = new HttpClient('rubygems-oidc-action')
+  const url = `${server}/api/v1/oidc/trusted_publisher/exchange_token`
+  const res = await http.postJson(url, {jwt: webIdentityToken}, {})
+  return res.result
+}
+"""
+
+    def test_postJson_token_exchange_exempted(self):
+        # @actions/http-client postJson is JSON-only — response is parsed as
+        # structured data, never persisted or executed.
+        assert _file_is_pure_data_fetch(self.RUBYGEMS_OIDC_EXCHANGE) is True
+        assert _find_binary_downloads_js(self.RUBYGEMS_OIDC_EXCHANGE) == []
+
+    def test_getJson_alone_exempts(self):
+        # Same family as postJson — getJson auto-parses the response body.
+        get_json = """\
+import {HttpClient} from '@actions/http-client'
+const http = new HttpClient('x')
+const res = await http.getJson('https://api.example.com/v1/info')
+return res.result
+"""
+        assert _file_is_pure_data_fetch(get_json) is True
+        assert _find_binary_downloads_js(get_json) == []
+
+    def test_postJson_with_extract_in_same_file_not_exempt(self):
+        # If a JSON RPC call lives next to a real binary extraction in the
+        # same file, the binary-handle gate must still disable the exemption.
+        mixed = """\
+import {HttpClient} from '@actions/http-client'
+import * as tc from '@actions/tool-cache'
+
+const http = new HttpClient('x')
+const meta = await http.getJson('https://api.example.com/manifest')
+const archive = await tc.downloadTool(meta.result.url)
+await tc.extractTar(archive, dest)
+"""
+        assert _file_is_pure_data_fetch(mixed) is False
+        findings = _find_binary_downloads_js(mixed)
+        # Both the getJson and the downloadTool stay flagged.
+        assert len(findings) == 2
