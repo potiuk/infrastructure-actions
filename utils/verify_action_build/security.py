@@ -1076,6 +1076,11 @@ _JS_DATA_PARSE_PATTERNS = [
     re.compile(r"\.endsWith\s*\("),
     re.compile(r"\.toLowerCase\s*\(\)"),
     re.compile(r"\.toUpperCase\s*\(\)"),
+    # @actions/http-client JSON helpers (postJson/getJson/putJson/patchJson/
+    # delJson/requestJson) auto-parse the response body as JSON. Reaching for
+    # these is an explicit "treat the response as structured data" signal
+    # — typical of OIDC/RPC token-exchange calls, not binary downloads.
+    re.compile(r"\.(?:get|post|put|patch|del|request)Json\s*\("),
 ]
 
 # Markers indicating the response is treated as a binary or executable —
