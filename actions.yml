@@ -784,6 +784,12 @@ release-drafter/release-drafter:
 ruby/setup-ruby:
   '*':
     keep: true
+rubygems/configure-rubygems-credentials:
+  bc6dd217f8a4f919d6835fcfefd470ef821f5c44:
+    tag: v1.0.0
+rubygems/release-gem:
+  6317d8d1f7e28c24d28f6eff169ea854948bd9f7:
+    tag: v1.2.0
 runs-on/action:
   cd2b598b0515d39d78c38a02d529db87d2196d1e:
     tag: v2.0.3
