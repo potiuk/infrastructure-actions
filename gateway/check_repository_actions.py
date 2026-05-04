@@ -1,9 +1,3 @@
-# /// script
-# requires-python = ">=3.13"
-# dependencies = [
-#     "ruyaml",
-# ]
-# ///
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -22,7 +16,13 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-#
+
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#     "ruyaml",
+# ]
+# ///
 
 import fnmatch
 import os
