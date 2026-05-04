@@ -1080,7 +1080,10 @@ _JS_DATA_PARSE_PATTERNS = [
     # delJson/requestJson) auto-parse the response body as JSON. Reaching for
     # these is an explicit "treat the response as structured data" signal
     # — typical of OIDC/RPC token-exchange calls, not binary downloads.
-    re.compile(r"\.(?:get|post|put|patch|del|request)Json\s*\("),
+    # The optional ``<...>`` admits TypeScript generic type parameters
+    # (``http.postJson<IdToken>(...)``); without it the regex misses the
+    # exact call shape rubygems/configure-rubygems-credentials uses.
+    re.compile(r"\.(?:get|post|put|patch|del|request)Json(?:\s*<[^>]*>)?\s*\("),
 ]
 
 # Markers indicating the response is treated as a binary or executable —

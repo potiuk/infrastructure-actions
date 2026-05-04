@@ -864,10 +864,12 @@ return lines[0]
         assert _file_is_pure_data_fetch(split_fetch) is True
         assert _find_binary_downloads_js(split_fetch) == []
 
-    # The exact pattern that triggered the false positive on PR #789
+    # The exact pattern that triggered the false positive on PR #789 / #795
     # (rubygems/configure-rubygems-credentials, transitively pulled in by
     # rubygems/release-gem): @actions/http-client postJson against an OIDC
     # token-exchange endpoint. The response is a credential, not a binary.
+    # The ``<IdToken>`` generic mirrors the v2.0.0 source verbatim — earlier
+    # versions of this fixture omitted it and quietly hid a regex hole.
     RUBYGEMS_OIDC_EXCHANGE = """\
 import * as core from '@actions/core'
 import {HttpClient} from '@actions/http-client'
@@ -877,8 +879,12 @@ export async function exchangeToken(audience, server) {
   const webIdentityToken = await core.getIDToken(audience)
   const http = new HttpClient('rubygems-oidc-action')
   const url = `${server}/api/v1/oidc/trusted_publisher/exchange_token`
-  const res = await http.postJson(url, {jwt: webIdentityToken}, {})
-  return res.result
+  const res = await http.postJson<IdToken>(
+    url,
+    {jwt: webIdentityToken},
+    {'content-type': 'application/json', accept: 'application/json'}
+  )
+  return IdTokenSchema.parse(res.result)
 }
 """
 
