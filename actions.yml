@@ -793,6 +793,9 @@ ruby/setup-ruby:
 rubygems/configure-rubygems-credentials:
   bc6dd217f8a4f919d6835fcfefd470ef821f5c44:
     tag: v1.0.0
+    expires_at: 2026-07-27
+  762a4b77c3300434bb57c7ce80b20e36231927aa:
+    tag: v2.0.0
 rubygems/release-gem:
   6317d8d1f7e28c24d28f6eff169ea854948bd9f7:
     tag: v1.2.0

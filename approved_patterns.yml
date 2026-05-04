@@ -277,6 +277,7 @@
 - release-drafter/release-drafter@*
 - ruby/setup-ruby@*
 - rubygems/configure-rubygems-credentials@bc6dd217f8a4f919d6835fcfefd470ef821f5c44
+- rubygems/configure-rubygems-credentials@762a4b77c3300434bb57c7ce80b20e36231927aa
 - rubygems/release-gem@6317d8d1f7e28c24d28f6eff169ea854948bd9f7
 - runs-on/action@cd2b598b0515d39d78c38a02d529db87d2196d1e
 - runs-on/action@742bf56072eb4845a0f94b3394673e4903c90ff0
