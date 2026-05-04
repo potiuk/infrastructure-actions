@@ -482,6 +482,33 @@ runs:
                 )
         assert failures == []
 
+    def test_skips_trusted_verifier_ref(self):
+        # Mirrors sbt/setup-sbt → carabiner-dev/actions/ampel/verify →
+        # install/ampel: descending into the verifier surfaces a bootstrap
+        # installer that can't verify itself. The walker treats the verifier
+        # ref as a trust leaf and stops there.
+        root_yml = """\
+name: Root
+runs:
+  using: composite
+  steps:
+    - uses: carabiner-dev/actions/ampel/verify@dddddddddddddddddddddddddddddddddddddddd
+"""
+
+        def fake_action_yml(org, repo, commit, sub_path=""):
+            if org == "myorg":
+                return root_yml
+            raise AssertionError(
+                f"should not fetch nested yml for {org}/{repo}/{sub_path}"
+            )
+
+        with mock.patch("verify_action_build.security.fetch_action_yml", side_effect=fake_action_yml):
+            with mock.patch("verify_action_build.security.fetch_file_from_github", return_value=None):
+                warnings, failures = analyze_binary_downloads_recursive(
+                    "myorg", "rootrepo", "b" * 40,
+                )
+        assert failures == []
+
 
 class TestAnalyzeRepoMetadata:
     def test_mit_license_detected(self):

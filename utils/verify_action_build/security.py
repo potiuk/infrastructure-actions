@@ -41,6 +41,24 @@ from .approved_actions import find_approved_versions
 # Orgs we trust to the point of not descending into their nested action graph.
 TRUSTED_ORGS = {"actions", "github"}
 
+# Verifier-action references that are treated as trust leaves. When a parent
+# action.yml `uses:` one of these, the walker yields the visit as a stub and
+# does not descend into the verifier's own action graph.
+#
+# Why: a verification action is itself the root of the artifact-trust chain
+# from its caller's perspective. Descending in would surface its bootstrap
+# installer (e.g. carabiner-dev/actions/install/ampel), which downloads the
+# verifier binary without an inline checksum/signature — a chicken-and-egg
+# problem the installer cannot solve. We accept the verifier ref's
+# hash-pinned commit as the trust anchor instead.
+#
+# Each entry is (org, repo, sub_path). Keep in sync with
+# `_VERIFICATION_USES_PATTERNS` below — same identities, different layer.
+TRUSTED_VERIFIER_REFS: set[tuple[str, str, str]] = {
+    ("carabiner-dev", "actions", "ampel/verify"),
+    ("slsa-framework", "slsa-verifier-action", ""),
+}
+
 # Exemptions file for the lock-file-presence check.  Path matches the
 # convention used by approved_actions.ACTIONS_YML.
 LOCK_FILE_EXEMPTIONS_YML = (
@@ -161,7 +179,7 @@ def walk_actions(
             )
             return
 
-        trusted = o in TRUSTED_ORGS
+        trusted = o in TRUSTED_ORGS or (o, r, s) in TRUSTED_VERIFIER_REFS
         if depth > 0 and trusted:
             yield VisitedAction(
                 org=o, repo=r, commit_hash=c, sub_path=s, depth=depth,
