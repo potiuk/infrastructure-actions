@@ -340,6 +340,68 @@ runs:
                 warnings, failures = analyze_binary_downloads("org", "repo", "a" * 40)
         assert failures == []
 
+    def test_action_yml_sibling_ampel_verify_step_passes(self):
+        # Mirrors the sbt/setup-sbt pattern: download in one run block,
+        # signature verification in a sibling `uses:` step that calls
+        # carabiner-dev/actions/ampel/verify.
+        action_yml = """\
+name: Test
+runs:
+  using: composite
+  steps:
+    - name: Download tool
+      shell: bash
+      run: |
+        curl -sL https://example.com/tool.zip > /tmp/tool.zip
+        curl -sL https://example.com/tool.zip.asc > /tmp/tool.zip.asc
+    - name: Verify signature
+      uses: carabiner-dev/actions/ampel/verify@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      with:
+        subject: /tmp/tool.zip
+"""
+        with mock.patch("verify_action_build.security.fetch_action_yml", return_value=action_yml):
+            with mock.patch("verify_action_build.security.fetch_file_from_github", return_value=None):
+                warnings, failures = analyze_binary_downloads("org", "repo", "a" * 40)
+        assert failures == []
+
+    def test_action_yml_sibling_slsa_verifier_step_passes(self):
+        action_yml = """\
+name: Test
+runs:
+  using: composite
+  steps:
+    - name: Download tool
+      shell: bash
+      run: |
+        curl -fsSLO https://example.com/tool.tar.gz
+    - name: Verify provenance
+      uses: slsa-framework/slsa-verifier-action@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+"""
+        with mock.patch("verify_action_build.security.fetch_action_yml", return_value=action_yml):
+            with mock.patch("verify_action_build.security.fetch_file_from_github", return_value=None):
+                warnings, failures = analyze_binary_downloads("org", "repo", "a" * 40)
+        assert failures == []
+
+    def test_action_yml_sibling_unrelated_uses_step_still_fails(self):
+        # A `uses:` step that is NOT a known verification action must not
+        # excuse an unverified download.
+        action_yml = """\
+name: Test
+runs:
+  using: composite
+  steps:
+    - name: Download tool
+      shell: bash
+      run: |
+        curl -fsSLO https://example.com/tool.tar.gz
+    - name: Cache
+      uses: actions/cache@cccccccccccccccccccccccccccccccccccccccc
+"""
+        with mock.patch("verify_action_build.security.fetch_action_yml", return_value=action_yml):
+            with mock.patch("verify_action_build.security.fetch_file_from_github", return_value=None):
+                warnings, failures = analyze_binary_downloads("org", "repo", "a" * 40)
+        assert len(failures) >= 1
+
     def test_releases_download_path_flagged(self):
         # URL without a binary extension but under /releases/download/ still
         # looks like a binary artefact — flag it.
