@@ -286,6 +286,9 @@ dependabot/fetch-metadata:
 dlang-community/setup-dlang:
   '*':
     keep: true
+docker/bake-action:
+  aefd381cbaa93c62a1e8b02194ae420cc36269d2:
+    tag: v4.7.0
 docker/build-push-action:
   10e90e3645eae34f1e60eeb005ba3a3d33f178e8:
     tag: v6.19.2
@@ -295,6 +298,9 @@ docker/build-push-action:
     expires_at: 2026-07-07
   bcafcacb16a39f128d818304e6c9c0c18556b85f:
     tag: v7.1.0
+  ca052bb54ab0790a636c9b5f226502c73d547a25:
+    tag: v5.4.0
+    expires_at: 2026-07-28
 docker/login-action:
   c94ce9fb468520275223c153574b00df6fe4bcc9:
     tag: v3.7.0
@@ -322,6 +328,9 @@ docker/setup-qemu-action:
     expires_at: 2026-06-14
   ce360397dd3f832beb865e1373c09c0e9f86d70a:
     tag: v4.0.0
+  c7c53464625b32c7a7e944ae62b3e17d2b600130:
+    tag: v3.7.0
+    expires_at: 2026-07-28
 docker://jekyll/jekyll:
   sha256:400b8d1569f118bca8a3a09a25f32803b00a55d1ea241feaf5f904d66ca9c625:
 docker://pandoc/core:
