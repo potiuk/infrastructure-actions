@@ -41,6 +41,24 @@ from .approved_actions import find_approved_versions
 # Orgs we trust to the point of not descending into their nested action graph.
 TRUSTED_ORGS = {"actions", "github"}
 
+# Verifier-action references that are treated as trust leaves. When a parent
+# action.yml `uses:` one of these, the walker yields the visit as a stub and
+# does not descend into the verifier's own action graph.
+#
+# Why: a verification action is itself the root of the artifact-trust chain
+# from its caller's perspective. Descending in would surface its bootstrap
+# installer (e.g. carabiner-dev/actions/install/ampel), which downloads the
+# verifier binary without an inline checksum/signature — a chicken-and-egg
+# problem the installer cannot solve. We accept the verifier ref's
+# hash-pinned commit as the trust anchor instead.
+#
+# Each entry is (org, repo, sub_path). Keep in sync with
+# `_VERIFICATION_USES_PATTERNS` below — same identities, different layer.
+TRUSTED_VERIFIER_REFS: set[tuple[str, str, str]] = {
+    ("carabiner-dev", "actions", "ampel/verify"),
+    ("slsa-framework", "slsa-verifier-action", ""),
+}
+
 # Exemptions file for the lock-file-presence check.  Path matches the
 # convention used by approved_actions.ACTIONS_YML.
 LOCK_FILE_EXEMPTIONS_YML = (
@@ -161,7 +179,7 @@ def walk_actions(
             )
             return
 
-        trusted = o in TRUSTED_ORGS
+        trusted = o in TRUSTED_ORGS or (o, r, s) in TRUSTED_VERIFIER_REFS
         if depth > 0 and trusted:
             yield VisitedAction(
                 org=o, repo=r, commit_hash=c, sub_path=s, depth=depth,
@@ -1040,6 +1058,20 @@ _VERIFICATION_PATTERNS = [
     re.compile(r'["\'][a-f0-9]{32,}\s+\*?\S+["\']', re.IGNORECASE),
 ]
 
+# `uses:` references to external composite/JS actions that perform
+# cryptographic verification of a downloaded artifact. When a step in an
+# action.yml invokes one of these, downloads in sibling run blocks (or in
+# scripts referenced from the same action.yml) are considered verified —
+# the verification just happens in a separate step rather than inline.
+_VERIFICATION_USES_PATTERNS = [
+    # carabiner-dev Ampel: policy-driven signature/attestation verification.
+    re.compile(r"\buses:\s*[\"']?carabiner-dev/actions/ampel/verify\b", re.IGNORECASE),
+    # SLSA provenance verifier.
+    re.compile(r"\buses:\s*[\"']?slsa-framework/slsa-verifier-action\b", re.IGNORECASE),
+    # GitHub-native attestation verification.
+    re.compile(r"\buses:\s*[\"']?actions/attest-verify\b", re.IGNORECASE),
+]
+
 
 # Patterns indicating a JS/TS download of a remote artifact. Most JS actions
 # that fetch binaries go through @actions/tool-cache's downloadTool (which
@@ -1270,6 +1302,10 @@ def _has_verification(content: str) -> bool:
     return any(p.search(content) for p in _VERIFICATION_PATTERNS)
 
 
+def _action_yml_uses_external_verification(action_yml: str) -> bool:
+    return any(p.search(action_yml) for p in _VERIFICATION_USES_PATTERNS)
+
+
 def _extract_run_blocks(action_yml: str) -> list[str]:
     """Return the textual contents of every ``run:`` block in an action.yml."""
     blocks: list[str] = []
@@ -1318,6 +1354,11 @@ def analyze_binary_downloads(
     failures: list[str] = []
 
     files_to_scan: list[tuple[str, str]] = []
+    # Paths whose verification context is the surrounding action.yml — i.e.
+    # run blocks of the action.yml itself and scripts it invokes. A sibling
+    # `uses:` step (e.g. carabiner-dev/actions/ampel/verify) or a sibling
+    # run block with shell verification covers all of these.
+    action_yml_paths: set[str] = set()
 
     df_candidates = [f"{sub_path}/Dockerfile", "Dockerfile"] if sub_path else ["Dockerfile"]
     for df_path in df_candidates:
@@ -1327,10 +1368,16 @@ def analyze_binary_downloads(
             break
 
     action_yml = fetch_action_yml(org, repo, commit_hash, sub_path)
+    action_yml_provides_verify = bool(action_yml) and (
+        _has_verification(action_yml)
+        or _action_yml_uses_external_verification(action_yml)
+    )
     if action_yml:
         for idx, block in enumerate(_extract_run_blocks(action_yml), start=1):
             if block.strip():
-                files_to_scan.append((f"action.yml [run block #{idx}]", block))
+                path = f"action.yml [run block #{idx}]"
+                files_to_scan.append((path, block))
+                action_yml_paths.add(path)
 
     script_files: set[str] = set()
     if action_yml:
@@ -1355,6 +1402,7 @@ def analyze_binary_downloads(
             content = fetch_file_from_github(org, repo, commit_hash, script_path)
         if content is not None:
             files_to_scan.append((script_path, content))
+            action_yml_paths.add(script_path)
 
     # JS/TS source files: shell-pattern downloads (curl/wget) are rare here
     # but JS actions commonly fetch binaries via @actions/tool-cache etc.,
@@ -1373,10 +1421,17 @@ def analyze_binary_downloads(
         if not downloads:
             continue
         any_downloads = True
-        if _has_verification(content):
+        verified_via_action_yml = (
+            path in action_yml_paths and action_yml_provides_verify
+        )
+        if _has_verification(content) or verified_via_action_yml:
+            note = (
+                "verification present in file"
+                if not verified_via_action_yml or _has_verification(content)
+                else "verification present in sibling step of action.yml"
+            )
             console.print(
-                f"  [green]✓[/green] {path}: {len(downloads)} download(s), "
-                f"verification present in file"
+                f"  [green]✓[/green] {path}: {len(downloads)} download(s), {note}"
             )
             for line_num, snippet in downloads[:3]:
                 console.print(f"    [dim]line {line_num}:[/dim] [dim]{snippet}[/dim]")
