@@ -68,12 +68,20 @@ def _tree_top_level_names(org: str, repo: str, commit_hash: str) -> set[str]:
 def is_source_detached(org: str, repo: str, commit_hash: str, sub_path: str = "") -> bool:
     """Return True when the commit tree lacks buildable source.
 
-    A "source-detached" commit is one where the tagged tree contains only
-    distributable artifacts — no ``package.json`` at the build root.  When
-    ``sub_path`` is set (monorepo sub-action), we check that sub-tree; else
-    the repo root.  The heuristic is intentionally narrow: we only flag
-    commits that *also* contain a ``dist/`` directory, so repos that simply
-    don't use a build step (composite/docker actions) aren't false-positived.
+    A "source-detached" commit is one where the tagged tree contains
+    distributable artifacts (a ``dist/`` directory) but no source to
+    rebuild from — no ``src/`` tree and no top-level TypeScript/JS source
+    files.  When ``sub_path`` is set (monorepo sub-action), we check that
+    sub-tree; else the repo root.  The heuristic only flags commits that
+    contain a ``dist/`` directory, so repos that simply don't use a build
+    step (composite/docker actions) aren't false-positived.
+
+    Note: ``package.json`` may or may not be present at a source-detached
+    tag.  Some release-tagging automations (e.g. benchmark-action's at
+    v1.22.0) include ``package.json`` for runtime resolution and consumer
+    metadata while still excluding the source — so we deliberately do
+    not gate on its absence.  The reliable signal is "no place to build
+    from", which is what the source/root-source checks below test for.
     """
     # Monorepo sub-actions typically keep their build tooling at the repo
     # root, so a sub_path without package.json is expected, not source-
@@ -86,9 +94,13 @@ def is_source_detached(org: str, repo: str, commit_hash: str, sub_path: str = ""
         return False
 
     has_dist = "dist" in names
-    has_pkg = "package.json" in names
     has_src_tree = "src" in names
-    return has_dist and not has_pkg and not has_src_tree
+    # Source can also live at the repo root next to ``action.yml`` (an
+    # ``index.ts`` action with no separate ``src/``).  Don't flag those.
+    has_root_ts_source = any(
+        n.endswith((".ts", ".tsx", ".mts", ".cts")) for n in names
+    )
+    return has_dist and not has_src_tree and not has_root_ts_source
 
 
 def _find_tags_for_commit(org: str, repo: str, commit_hash: str) -> list[str]:

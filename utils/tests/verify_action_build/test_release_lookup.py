@@ -22,6 +22,7 @@ from unittest import mock
 from verify_action_build.release_lookup import (
     format_release_time,
     get_release_or_commit_time,
+    is_source_detached,
 )
 
 
@@ -140,3 +141,89 @@ class TestGetReleaseOrCommitTime:
         ):
             result = get_release_or_commit_time("org", "repo", "a" * 40)
         assert result is None
+
+
+class TestIsSourceDetached:
+    """The detector decides whether a tag commit lacks buildable source so
+    the rebuild can fall back to the default-branch source commit the
+    release was cut from.  Each scenario mocks the top-level tree names
+    that would be returned by GitHub's git-tree API for the tag commit.
+    """
+
+    @staticmethod
+    def _patch_tree(names):
+        return mock.patch(
+            "verify_action_build.release_lookup._tree_top_level_names",
+            return_value=set(names),
+        )
+
+    def test_orphan_tag_with_package_json_is_source_detached(self):
+        # benchmark-action/github-action-benchmark@v1.22.0 shape: the
+        # release-tagging workflow ships ``package.json`` (consumers read
+        # it; ``node_modules/`` resolves against it) but excludes the
+        # ``src/`` source.  Pre-fix the ``not has_pkg`` requirement caused
+        # this to be treated as source-bearing → rebuild produced an empty
+        # tree → ``canonicalizeUnit.js`` showed up as "only in original".
+        names = {
+            ".gitignore", "action-types.yml", "action.yml",
+            "dist", "node_modules", "package-lock.json", "package.json",
+        }
+        with self._patch_tree(names):
+            assert is_source_detached("org", "repo", "a" * 40) is True
+
+    def test_orphan_tag_without_package_json_is_source_detached(self):
+        # The original PR #768 shape (``a6b95b7``): orphan tag with only
+        # ``dist/`` and an action manifest.  Must continue to be detected.
+        names = {"action.yml", "dist"}
+        with self._patch_tree(names):
+            assert is_source_detached("org", "repo", "a" * 40) is True
+
+    def test_tree_with_src_directory_is_not_source_detached(self):
+        # The common case: the tag points at the same commit as the
+        # default branch and the source lives under ``src/`` next to the
+        # built ``dist/``.  No fallback needed.
+        names = {
+            "action.yml", "dist", "src", "package.json", "tsconfig.json",
+        }
+        with self._patch_tree(names):
+            assert is_source_detached("org", "repo", "a" * 40) is False
+
+    def test_root_typescript_source_is_not_source_detached(self):
+        # An action that keeps its source at the repo root (``index.ts``
+        # next to ``action.yml``) and emits to ``dist/`` shouldn't be
+        # treated as source-detached even though there's no ``src/``.
+        names = {
+            "action.yml", "dist", "index.ts", "package.json", "tsconfig.json",
+        }
+        with self._patch_tree(names):
+            assert is_source_detached("org", "repo", "a" * 40) is False
+
+    def test_composite_or_docker_action_without_dist_is_not_flagged(self):
+        # Composite / docker actions don't ship a ``dist/`` tree at all.
+        # Without ``dist/`` there's no "rebuilt artifact" to reconcile,
+        # so the source-detached fallback is irrelevant.
+        names = {"action.yml", "Dockerfile", "scripts"}
+        with self._patch_tree(names):
+            assert is_source_detached("org", "repo", "a" * 40) is False
+
+    def test_sub_path_disables_detection(self):
+        # Monorepo sub-actions typically keep build tooling at the repo
+        # root, so a sub_path tree without ``src/`` or ``package.json``
+        # is expected and isn't source-detached.  The detector should
+        # short-circuit on any non-empty ``sub_path`` without consulting
+        # the tree at all.
+        with mock.patch(
+            "verify_action_build.release_lookup._tree_top_level_names"
+        ) as tree:
+            assert (
+                is_source_detached("org", "repo", "a" * 40, sub_path="install/foo")
+                is False
+            )
+            tree.assert_not_called()
+
+    def test_empty_tree_returns_false(self):
+        # An API failure / empty tree shouldn't be classed as
+        # source-detached — the fallback would just look up a non-existent
+        # source commit and produce a confusing report.
+        with self._patch_tree(set()):
+            assert is_source_detached("org", "repo", "a" * 40) is False
