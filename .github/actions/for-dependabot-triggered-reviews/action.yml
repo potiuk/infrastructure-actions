@@ -71,6 +71,8 @@ runs:
       if: false
     - uses: burnett01/rsync-deployments@66257cad6bfeb2171d3b6bfa6c9a22279dd9c3a1  # 8.0.5
       if: false
+    - uses: carabiner-dev/actions/ampel/verify@e0e3b8149dafed833431095bc148d50e7eade4e8  # v1.2.0
+      if: false
     - uses: carloscastrojumo/github-cherry-pick-action@503773289f4a459069c832dc628826685b75b4b3  # v1.0.10
       if: false
     - uses: commit-check/commit-check-action@7c158d4541309c5952de3343151750882b036d10  # v2.6.0
@@ -92,6 +94,8 @@ runs:
     - uses: dawidd6/action-send-mail@42942bc2f8fba4e611b459a018967a6a7c78c68c  # v17
       if: false
     - uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98  # v3.1.0
+      if: false
+    - uses: docker/bake-action@aefd381cbaa93c62a1e8b02194ae420cc36269d2  # v4.7.0
       if: false
     - uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f  # v7.1.0
       if: false

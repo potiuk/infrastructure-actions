@@ -67,6 +67,7 @@
 - burnett01/rsync-deployments@66257cad6bfeb2171d3b6bfa6c9a22279dd9c3a1
 - burrunan/gradle-cache-action@*
 - bytedeco/javacpp-presets@*
+- carabiner-dev/actions/ampel/verify@e0e3b8149dafed833431095bc148d50e7eade4e8
 - carloscastrojumo/github-cherry-pick-action@503773289f4a459069c832dc628826685b75b4b3
 - carlosperate/arm-none-eabi-gcc-action@*
 - check-spelling/check-spelling@*
