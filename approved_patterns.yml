@@ -108,9 +108,11 @@
 - dependabot/fetch-metadata@ffa630c65fa7e0ecfa0625b5ceda64399aea1b36
 - dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98
 - dlang-community/setup-dlang@*
+- docker/bake-action@aefd381cbaa93c62a1e8b02194ae420cc36269d2
 - docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
 - docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294
 - docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f
+- docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25
 - docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
 - docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2
 - docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121
@@ -120,6 +122,7 @@
 - docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd
 - docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392
 - docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a
+- docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130
 - docker://jekyll/jekyll@sha256:400b8d1569f118bca8a3a09a25f32803b00a55d1ea241feaf5f904d66ca9c625
 - docker://pandoc/core@sha256:48e15e83db0df6fb39b24adb0210ecbde85003a3a8139d526e29c98f95ac0a93
 - dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
